@@ -4,3 +4,6 @@
 			
 18-01-2026
 			->	Compiled successfully
+			->	Added this as initialversion for the Github
+			->	Integration of the RTOS FreeRTOSv202411.00 is done and compiled successfully
+			->	Pushing to Github as next version

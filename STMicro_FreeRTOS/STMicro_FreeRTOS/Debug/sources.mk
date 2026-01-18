@@ -25,4 +25,7 @@ SUBDIRS := \
 Core/Src \
 Core/Startup \
 Drivers/STM32F4xx_HAL_Driver/Src \
+ThirdParty/RTOS \
+ThirdParty/RTOS/portable/GCC/ARM_CM4F \
+ThirdParty/RTOS/portable/MemMang \
 
