@@ -7,3 +7,7 @@
 			->	Added this as initialversion for the Github
 			->	Integration of the RTOS FreeRTOSv202411.00 is done and compiled successfully
 			->	Pushing to Github as next version
+			
+19-01-2025
+			->	HAL timer changed to Timer 06
+			->	Systick timer keeping for RTOS			
