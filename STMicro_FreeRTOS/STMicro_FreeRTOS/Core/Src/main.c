@@ -21,7 +21,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
+#include "FreeRTOS.h"
+#include "task.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,7 +50,8 @@
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
+void vTask1_Fun(void * pvParameters);
+void vTask2_Fun(void * pvParameters);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -64,7 +67,8 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+	TaskHandle_t task1_handle, task2_handle;
+	BaseType_t	Task_status;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -85,6 +89,13 @@ int main(void)
 
   /* Initialize all configured peripherals */
   /* USER CODE BEGIN 2 */
+  Task_status = xTaskCreate(vTask1_Fun,"Task-1",200,"Task-1 function",2,&task1_handle);
+  configASSERT(Task_status == pdPASS);
+
+  Task_status = xTaskCreate(vTask2_Fun,"Task-2",200,"Task-2 function",2,&task2_handle);
+  configASSERT(Task_status == pdPASS);
+
+  vTaskStartScheduler();
 
   /* USER CODE END 2 */
 
@@ -141,7 +152,29 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+void vTask1_Fun(void * pvParameters)
+{
+	while(1)
+	{
+		printf("%s\n", (char*)pvParameters);
 
+		taskYIELD();
+	}
+
+	vTaskDelete(NULL);
+}
+
+void vTask2_Fun(void * pvParameters)
+{
+	while(1)
+	{
+		printf("%s\n", (char*)pvParameters);
+
+		taskYIELD();
+	}
+
+	vTaskDelete(NULL);
+}
 /* USER CODE END 4 */
 
 /**

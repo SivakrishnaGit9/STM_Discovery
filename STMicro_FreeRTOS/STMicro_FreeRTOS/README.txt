@@ -10,4 +10,8 @@
 			
 19-01-2025
 			->	HAL timer changed to Timer 06
-			->	Systick timer keeping for RTOS			
+			->	Systick timer keeping for RTOS
+			->	Task1 and Task2 created in RTOS
+			
+22-01-2025
+			->	Added ITM write using printf			

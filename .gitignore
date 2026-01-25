@@ -1,2 +1,12 @@
 /stm_discovery/.metadata
 /stmicro_freeRTOS/.metadata
+
+# Ignore compilation artifacts
+*.o
+*.d
+*.su
+*.elf
+*.list
+*.map
+*.cyclo
+.settings/
