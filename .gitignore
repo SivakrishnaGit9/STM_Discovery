@@ -10,3 +10,4 @@
 *.map
 *.cyclo
 .settings/
+*.mk
