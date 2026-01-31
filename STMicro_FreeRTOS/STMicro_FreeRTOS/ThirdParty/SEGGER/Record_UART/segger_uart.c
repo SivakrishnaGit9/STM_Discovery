@@ -9,8 +9,6 @@ Purpose : Terminal control for Flasher using USART1 on PA9/PA10
 
 #include "SEGGER_SYSVIEW.h"
 
-#define SEGGER_UART_REC 1
-
 #if (SEGGER_UART_REC == 1)
 #include "SEGGER_RTT.h"
 #include "stm32f4xx.h"

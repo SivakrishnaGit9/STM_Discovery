@@ -61,6 +61,8 @@ Revision: $Rev: 26230 $
 #include "SEGGER_SYSVIEW_Conf.h"
 #include "SEGGER_RTT_Conf.h"
 
+#define SEGGER_UART_REC 1
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -517,8 +519,12 @@ extern "C" {
 *    such as to enable transmission via UART or notify IP task.
 */
 #ifndef   SEGGER_SYSVIEW_ON_EVENT_RECORDED
-	extern void HIF_UART_EnableTXEInterrupt(void);
-  #define SEGGER_SYSVIEW_ON_EVENT_RECORDED(NumBytes) HIF_UART_EnableTXEInterrupt()
+	#if (SEGGER_UART_REC == 1)
+		extern void HIF_UART_EnableTXEInterrupt(void);
+		#define SEGGER_SYSVIEW_ON_EVENT_RECORDED(NumBytes) HIF_UART_EnableTXEInterrupt()
+	#else
+		#define SEGGER_SYSVIEW_ON_EVENT_RECORDED(NumBytes)
+	#endif
 #endif
 
 /*********************************************************************

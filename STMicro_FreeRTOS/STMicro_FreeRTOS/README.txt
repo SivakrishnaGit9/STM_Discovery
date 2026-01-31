@@ -28,3 +28,8 @@
 29-01-2026
 			->	Trying to use the System view continuous recording using UART but not working
 			->	System view using record and save working
+			
+31-01-2026
+			->	SEGGER continuous recording working with SystemView_Windows_V320_x64.exe
+				Not but but with the latest version it is not working proply when running from flash
+				Even above will work only if in Debug mode

@@ -93,7 +93,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   DWT_CTRL |= 1;
 
-  SEGGER_UART_init(500000);
+  SEGGER_UART_init(115200);
 
   SEGGER_SYSVIEW_Conf();
 
