@@ -517,7 +517,8 @@ extern "C" {
 *    such as to enable transmission via UART or notify IP task.
 */
 #ifndef   SEGGER_SYSVIEW_ON_EVENT_RECORDED
-  #define SEGGER_SYSVIEW_ON_EVENT_RECORDED(NumBytes)
+	extern void HIF_UART_EnableTXEInterrupt(void);
+  #define SEGGER_SYSVIEW_ON_EVENT_RECORDED(NumBytes) HIF_UART_EnableTXEInterrupt()
 #endif
 
 /*********************************************************************
