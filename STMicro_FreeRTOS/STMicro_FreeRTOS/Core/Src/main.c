@@ -49,9 +49,11 @@
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+static void MX_GPIO_Init(void);
 /* USER CODE BEGIN PFP */
-void vTask1_Fun(void * pvParameters);
-void vTask2_Fun(void * pvParameters);
+void vTask_GreenLED(void * pvParameters);
+void vTask_OrangeLED(void * pvParameters);
+void vTask_RedLED(void * pvParameters);
 
 extern void SEGGER_UART_init(U32 baud);
 /* USER CODE END PFP */
@@ -69,7 +71,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-	TaskHandle_t task1_handle, task2_handle;
+	TaskHandle_t task_GreenLED_handle, task_OrangeLED_handle, task_RedLED_handle;
 	BaseType_t	Task_status;
   /* USER CODE END 1 */
 
@@ -90,19 +92,24 @@ int main(void)
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
+  MX_GPIO_Init();
   /* USER CODE BEGIN 2 */
-  DWT_CTRL |= 1;
 
-  SEGGER_UART_init(115200);
+  SEGGER_UART_init(500000);
+
+  DWT_CTRL |= 1;
 
   SEGGER_SYSVIEW_Conf();
 
 //  SEGGER_SYSVIEW_Start();
 
-  Task_status = xTaskCreate(vTask1_Fun,"Task-1",200,"Task-1 function",2,&task1_handle);
+  Task_status = xTaskCreate(vTask_GreenLED,"Task Green LED",200,NULL,2,&task_GreenLED_handle);
   configASSERT(Task_status == pdPASS);
 
-  Task_status = xTaskCreate(vTask2_Fun,"Task-2",200,"Task-2 function",2,&task2_handle);
+  Task_status = xTaskCreate(vTask_OrangeLED,"Task Orange LED",200,NULL,2,&task_OrangeLED_handle);
+  configASSERT(Task_status == pdPASS);
+
+  Task_status = xTaskCreate(vTask_RedLED, "Task Red LED", 200, NULL, 2, &task_RedLED_handle);
   configASSERT(Task_status == pdPASS);
 
   vTaskStartScheduler();
@@ -166,33 +173,71 @@ void SystemClock_Config(void)
   }
 }
 
-/* USER CODE BEGIN 4 */
-void vTask1_Fun(void * pvParameters)
+/**
+  * @brief GPIO Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_GPIO_Init(void)
 {
-	char msg[100];
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
 
+  /* USER CODE END MX_GPIO_Init_1 */
+
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOD_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOD, Green_LED_Pin|Orange_LED_Pin|Red_LED_Pin|Blue_LED_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : Green_LED_Pin Orange_LED_Pin Red_LED_Pin Blue_LED_Pin */
+  GPIO_InitStruct.Pin = Green_LED_Pin|Orange_LED_Pin|Red_LED_Pin|Blue_LED_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+
+  /* USER CODE END MX_GPIO_Init_2 */
+}
+
+/* USER CODE BEGIN 4 */
+void vTask_GreenLED(void * pvParameters)
+{
 	while(1)
 	{
-//		printf("%s\n", (char*)pvParameters);
-		snprintf(msg,100,"%s\n", (char*)pvParameters);
-		SEGGER_SYSVIEW_PrintfTarget(msg);
-		taskYIELD();
+		SEGGER_SYSVIEW_PrintfTarget("Toggling Green LED");
+		HAL_GPIO_TogglePin(GPIOD, Green_LED_Pin);
+		HAL_Delay(1000);
+//		taskYIELD();
 	}
 
 	vTaskDelete(NULL);
 }
 
-void vTask2_Fun(void * pvParameters)
+void vTask_OrangeLED(void * pvParameters)
 {
-	char msg[100];
-
 	while(1)
 	{
-//		printf("%s\n", (char*)pvParameters);
-		snprintf(msg,100,"%s\n", (char*)pvParameters);
-		SEGGER_SYSVIEW_PrintfTarget(msg);
+		SEGGER_SYSVIEW_PrintfTarget("Toggling Orange LED");
+		HAL_GPIO_TogglePin(GPIOD, Orange_LED_Pin);
+		HAL_Delay(800);
+//		taskYIELD();
+	}
 
-		taskYIELD();
+	vTaskDelete(NULL);
+}
+
+void vTask_RedLED(void * pvParameters)
+{
+	while(1)
+	{
+		SEGGER_SYSVIEW_PrintfTarget("Toggling Red LED");
+		HAL_GPIO_TogglePin(GPIOD, Red_LED_Pin);
+		HAL_Delay(400);
+//		taskYIELD();
 	}
 
 	vTaskDelete(NULL);
