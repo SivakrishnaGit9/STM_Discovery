@@ -206,11 +206,15 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void vTask_GreenLED(void * pvParameters)
 {
+	TickType_t GreenLEDPreviousWakeTime;
+
+	GreenLEDPreviousWakeTime = xTaskGetTickCount();
 	while(1)
 	{
 		SEGGER_SYSVIEW_PrintfTarget("Toggling Green LED");
 		HAL_GPIO_TogglePin(GPIOD, Green_LED_Pin);
-		HAL_Delay(1000);
+//		vTaskDelay(pdMS_TO_TICKS(1000));
+		xTaskDelayUntil(&GreenLEDPreviousWakeTime, pdMS_TO_TICKS(1000));
 //		taskYIELD();
 	}
 
@@ -219,11 +223,16 @@ void vTask_GreenLED(void * pvParameters)
 
 void vTask_OrangeLED(void * pvParameters)
 {
+	TickType_t OrangeLEDPreviousWakeTime;
+
+	OrangeLEDPreviousWakeTime = xTaskGetTickCount();
+
 	while(1)
 	{
 		SEGGER_SYSVIEW_PrintfTarget("Toggling Orange LED");
 		HAL_GPIO_TogglePin(GPIOD, Orange_LED_Pin);
-		HAL_Delay(800);
+//		vTaskDelay(pdMS_TO_TICKS(800));
+		xTaskDelayUntil(&OrangeLEDPreviousWakeTime, pdMS_TO_TICKS(800));
 //		taskYIELD();
 	}
 
@@ -232,11 +241,16 @@ void vTask_OrangeLED(void * pvParameters)
 
 void vTask_RedLED(void * pvParameters)
 {
+	TickType_t RedLEDPreviousWakeTime;
+
+	RedLEDPreviousWakeTime = xTaskGetTickCount();
+
 	while(1)
 	{
 		SEGGER_SYSVIEW_PrintfTarget("Toggling Red LED");
 		HAL_GPIO_TogglePin(GPIOD, Red_LED_Pin);
-		HAL_Delay(400);
+//		vTaskDelay(pdMS_TO_TICKS(400));
+		xTaskDelayUntil(&RedLEDPreviousWakeTime, pdMS_TO_TICKS(400));
 //		taskYIELD();
 	}
 
