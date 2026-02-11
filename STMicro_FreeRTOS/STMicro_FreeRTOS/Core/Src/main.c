@@ -108,14 +108,11 @@ int main(void)
   Task_status = xTaskCreate(vTask_GreenLED,"Task Green LED",200,NULL,2,&task_GreenLED_handle);
   configASSERT(Task_status == pdPASS);
 
-  Task_status = xTaskCreate(vTask_OrangeLED,"Task Orange LED",200,NULL,2,&task_OrangeLED_handle);
+  Task_status = xTaskCreate(vTask_OrangeLED,"Task Orange LED",200,NULL,3,&task_OrangeLED_handle);
   configASSERT(Task_status == pdPASS);
 
-  Task_status = xTaskCreate(vTask_RedLED, "Task Red LED", 200, NULL, 2, &task_RedLED_handle);
+  Task_status = xTaskCreate(vTask_ButtonStatus,"Button Status",200,NULL,4,&task_ButtonStatus_handle);
   configASSERT(Task_status == pdPASS);
-
-//  Task_status = xTaskCreate(vTask_ButtonStatus, "Task Button Status", 200, NULL, 4, &task_ButtonStatus_handle);
-//  configASSERT(Task_status == pdPASS);
 
   NextTaskDelete = task_GreenLED_handle;
 
@@ -224,49 +221,24 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void vTask_GreenLED(void * pvParameters)
 {
-	BaseType_t	GreenLEDStatus;
-
 	while(1)
 	{
 		SEGGER_SYSVIEW_PrintfTarget("Toggling Green LED");
 		HAL_GPIO_TogglePin(GPIOD, Green_LED_Pin);
 
-		GreenLEDStatus = xTaskNotifyWait(0,0,NULL,pdMS_TO_TICKS(1000));
-
-		if(GreenLEDStatus == pdTRUE)
-		{
-			portENTER_CRITICAL();
-			NextTaskDelete = task_OrangeLED_handle;
-			portEXIT_CRITICAL();
-
-			vTaskDelete(NULL);
-		}
+		HAL_Delay(100);
 	}
-
-	vTaskDelete(NULL);
 }
 
 void vTask_OrangeLED(void * pvParameters)
 {
-	BaseType_t	OrangeLEDStatus;
-
 	while(1)
 	{
 		SEGGER_SYSVIEW_PrintfTarget("Toggling Orange LED");
 		HAL_GPIO_TogglePin(GPIOD, Orange_LED_Pin);
 
-		OrangeLEDStatus = xTaskNotifyWait(0,0,NULL,pdMS_TO_TICKS(800));
-
-		if(OrangeLEDStatus == pdTRUE)
-		{
-			portENTER_CRITICAL();
-			NextTaskDelete = task_RedLED_handle;
-			portEXIT_CRITICAL();
-
-			vTaskDelete(NULL);
-		}
+		HAL_Delay(1000);
 	}
-	vTaskDelete(NULL);
 }
 
 void vTask_RedLED(void * pvParameters)
@@ -295,29 +267,26 @@ void vTask_RedLED(void * pvParameters)
 
 void ButtonStatusFromISR(void)
 {
-	traceISR_ENTER();
-	xTaskNotifyFromISR(NextTaskDelete,0,eNoAction,&xHigherPriorityInReady);
-	traceISR_EXIT();
+	BaseType_t pxHigherPriorityTaskWoken =pdFALSE;
 
-	portYIELD_FROM_ISR(xHigherPriorityInReady);
+	xTaskNotifyFromISR(task_ButtonStatus_handle,0,eNoAction,&pxHigherPriorityTaskWoken);
+
+	portYIELD_FROM_ISR(pxHigherPriorityTaskWoken);
 }
 
 void vTask_ButtonStatus(void * pvParameters)
 {
-	GPIO_PinState Status = 0, Status_K1 = 0;
+	UBaseType_t PriorityGreenLED,PriorityOrangeLED;
 
 	while(1)
 	{
-		Status = HAL_GPIO_ReadPin(Button_Status_GPIO_Port,Button_Status_Pin);
+		xTaskNotifyWait(0, 0, NULL, portMAX_DELAY);
 
-		if((Status == GPIO_PIN_SET) && (Status_K1 != GPIO_PIN_SET))
-		{
-			xTaskNotify(NextTaskDelete,0,eNoAction);
-		}
+		PriorityGreenLED 	= uxTaskPriorityGet(task_GreenLED_handle);
+		PriorityOrangeLED	= uxTaskPriorityGet(task_OrangeLED_handle);
 
-		Status_K1 = Status;
-
-		vTaskDelay(pdMS_TO_TICKS(10));
+		vTaskPrioritySet(task_GreenLED_handle, PriorityOrangeLED);
+		vTaskPrioritySet(task_OrangeLED_handle, PriorityGreenLED);
 	}
 
 	vTaskDelete(NULL);
