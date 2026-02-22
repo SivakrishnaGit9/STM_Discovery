@@ -44,9 +44,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-TaskHandle_t task_GreenLED_handle, task_OrangeLED_handle, task_RedLED_handle, task_ButtonStatus_handle;
-TaskHandle_t volatile NextTaskDelete = NULL;
-BaseType_t xHigherPriorityInReady;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -56,7 +54,8 @@ static void MX_GPIO_Init(void);
 void vTask_GreenLED(void * pvParameters);
 void vTask_OrangeLED(void * pvParameters);
 void vTask_RedLED(void * pvParameters);
-void vTask_ButtonStatus(void * pvParameters);
+
+void vApplicationIdleHook( void );
 
 extern void SEGGER_UART_init(U32 baud);
 /* USER CODE END PFP */
@@ -74,6 +73,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
+	TaskHandle_t task_GreenLED_handle, task_OrangeLED_handle, task_RedLED_handle;
 	BaseType_t	Task_status;
   /* USER CODE END 1 */
 
@@ -108,13 +108,11 @@ int main(void)
   Task_status = xTaskCreate(vTask_GreenLED,"Task Green LED",200,NULL,2,&task_GreenLED_handle);
   configASSERT(Task_status == pdPASS);
 
-  Task_status = xTaskCreate(vTask_OrangeLED,"Task Orange LED",200,NULL,3,&task_OrangeLED_handle);
+  Task_status = xTaskCreate(vTask_OrangeLED,"Task Orange LED",200,NULL,2,&task_OrangeLED_handle);
   configASSERT(Task_status == pdPASS);
 
-  Task_status = xTaskCreate(vTask_ButtonStatus,"Button Status",200,NULL,4,&task_ButtonStatus_handle);
+  Task_status = xTaskCreate(vTask_RedLED, "Task Red LED", 200, NULL, 2, &task_RedLED_handle);
   configASSERT(Task_status == pdPASS);
-
-  NextTaskDelete = task_GreenLED_handle;
 
   vTaskStartScheduler();
 
@@ -190,17 +188,10 @@ static void MX_GPIO_Init(void)
   /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, Green_LED_Pin|Orange_LED_Pin|Red_LED_Pin|Blue_LED_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin : Button_Status_Pin */
-  GPIO_InitStruct.Pin = Button_Status_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(Button_Status_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : Green_LED_Pin Orange_LED_Pin Red_LED_Pin Blue_LED_Pin */
   GPIO_InitStruct.Pin = Green_LED_Pin|Orange_LED_Pin|Red_LED_Pin|Blue_LED_Pin;
@@ -208,10 +199,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
-
-  /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI0_IRQn, 14, 0);
-  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
@@ -221,77 +208,62 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void vTask_GreenLED(void * pvParameters)
 {
+	TickType_t GreenLEDPreviousWakeTime;
+
+	GreenLEDPreviousWakeTime = xTaskGetTickCount();
 	while(1)
 	{
 		SEGGER_SYSVIEW_PrintfTarget("Toggling Green LED");
 		HAL_GPIO_TogglePin(GPIOD, Green_LED_Pin);
-
-		HAL_Delay(100);
+//		vTaskDelay(pdMS_TO_TICKS(1000));
+		xTaskDelayUntil(&GreenLEDPreviousWakeTime, pdMS_TO_TICKS(1000));
+//		taskYIELD();
 	}
+
+	vTaskDelete(NULL);
 }
 
 void vTask_OrangeLED(void * pvParameters)
 {
+	TickType_t OrangeLEDPreviousWakeTime;
+
+	OrangeLEDPreviousWakeTime = xTaskGetTickCount();
+
 	while(1)
 	{
 		SEGGER_SYSVIEW_PrintfTarget("Toggling Orange LED");
 		HAL_GPIO_TogglePin(GPIOD, Orange_LED_Pin);
-
-		HAL_Delay(1000);
+//		vTaskDelay(pdMS_TO_TICKS(800));
+		xTaskDelayUntil(&OrangeLEDPreviousWakeTime, pdMS_TO_TICKS(800));
+//		taskYIELD();
 	}
+
+	vTaskDelete(NULL);
 }
 
 void vTask_RedLED(void * pvParameters)
 {
-	BaseType_t	RedLEDStatus;
+	TickType_t RedLEDPreviousWakeTime;
+
+	RedLEDPreviousWakeTime = xTaskGetTickCount();
 
 	while(1)
 	{
 		SEGGER_SYSVIEW_PrintfTarget("Toggling Red LED");
 		HAL_GPIO_TogglePin(GPIOD, Red_LED_Pin);
-
-		RedLEDStatus = xTaskNotifyWait(0,0,NULL,pdMS_TO_TICKS(400));
-
-		if(RedLEDStatus == pdTRUE)
-		{
-			portENTER_CRITICAL();
-			NextTaskDelete = task_GreenLED_handle;
-			portEXIT_CRITICAL();
-
-			vTaskDelete(NULL);
-		}
-	}
-
-	vTaskDelete(NULL);
-}
-
-void ButtonStatusFromISR(void)
-{
-	BaseType_t pxHigherPriorityTaskWoken =pdFALSE;
-
-	xTaskNotifyFromISR(task_ButtonStatus_handle,0,eNoAction,&pxHigherPriorityTaskWoken);
-
-	portYIELD_FROM_ISR(pxHigherPriorityTaskWoken);
-}
-
-void vTask_ButtonStatus(void * pvParameters)
-{
-	UBaseType_t PriorityGreenLED,PriorityOrangeLED;
-
-	while(1)
-	{
-		xTaskNotifyWait(0, 0, NULL, portMAX_DELAY);
-
-		PriorityGreenLED 	= uxTaskPriorityGet(task_GreenLED_handle);
-		PriorityOrangeLED	= uxTaskPriorityGet(task_OrangeLED_handle);
-
-		vTaskPrioritySet(task_GreenLED_handle, PriorityOrangeLED);
-		vTaskPrioritySet(task_OrangeLED_handle, PriorityGreenLED);
+//		vTaskDelay(pdMS_TO_TICKS(400));
+		xTaskDelayUntil(&RedLEDPreviousWakeTime, pdMS_TO_TICKS(400));
+//		taskYIELD();
 	}
 
 	vTaskDelete(NULL);
 }
 /* USER CODE END 4 */
+
+void vApplicationIdleHook( void )
+{
+	HAL_PWR_EnterSLEEPMode(PWR_MAINREGULATOR_ON, PWR_SLEEPENTRY_WFI);
+}
 
 /**
   * @brief  Period elapsed callback in non blocking mode
