@@ -24,6 +24,8 @@
 #include <stdio.h>
 #include "FreeRTOS.h"
 #include "task.h"
+#include "queue.h"
+#include "Controlling.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -42,22 +44,26 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+RTC_HandleTypeDef hrtc;
+
+UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+TaskHandle_t main_menu_handle, receive_command_handle, print_data_handle, led_menu_handle, rtc_menu_handle;
+QueueHandle_t send_queue, receive_queue;
+TimerHandle_t led_timer_handle[4];
 
+volatile uint8_t User_Input;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_USART2_UART_Init(void);
+static void MX_RTC_Init(void);
+void LED_Timer_Call_Back(TimerHandle_t xTimer);
 /* USER CODE BEGIN PFP */
-void vTask_GreenLED(void * pvParameters);
-void vTask_OrangeLED(void * pvParameters);
-void vTask_RedLED(void * pvParameters);
 
-void vApplicationIdleHook( void );
-
-extern void SEGGER_UART_init(U32 baud);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -73,8 +79,8 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-	TaskHandle_t task_GreenLED_handle, task_OrangeLED_handle, task_RedLED_handle;
-	BaseType_t	Task_status;
+  BaseType_t Task_status;
+  uint8_t i=0;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -95,24 +101,37 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_USART2_UART_Init();
+  MX_RTC_Init();
   /* USER CODE BEGIN 2 */
-
-  SEGGER_UART_init(500000);
 
   DWT_CTRL |= 1;
 
-  SEGGER_SYSVIEW_Conf();
-
-//  SEGGER_SYSVIEW_Start();
-
-  Task_status = xTaskCreate(vTask_GreenLED,"Task Green LED",200,NULL,2,&task_GreenLED_handle);
+  Task_status = xTaskCreate(vMain_Menu,"Main Menu Task",200,NULL,2,&main_menu_handle);
   configASSERT(Task_status == pdPASS);
 
-  Task_status = xTaskCreate(vTask_OrangeLED,"Task Orange LED",200,NULL,2,&task_OrangeLED_handle);
+  Task_status = xTaskCreate(vReceive_Command,"Receive Command Task",200,NULL,2,&receive_command_handle);
   configASSERT(Task_status == pdPASS);
 
-  Task_status = xTaskCreate(vTask_RedLED, "Task Red LED", 200, NULL, 2, &task_RedLED_handle);
+  Task_status = xTaskCreate(vPrint_Data,"Print Data Task",250,NULL,2,&print_data_handle);
   configASSERT(Task_status == pdPASS);
+
+  Task_status = xTaskCreate(vLED_Menu,"LED Task",200,NULL,2,&led_menu_handle);
+  configASSERT(Task_status == pdPASS);
+
+//  Task_status = xTaskCreate(vRTC_Menu,"RTC Menu Task",200,NULL,2,&rtc_menu_handle);
+//  configASSERT(Task_status == pdPASS);
+
+  send_queue = xQueueCreate(20, sizeof(uint8_t));
+  configASSERT(send_queue != NULL);
+
+  receive_queue = xQueueCreate(10, sizeof(size_t));
+  configASSERT(receive_queue != NULL);
+
+  for(i=0; i<4; i++)
+	 led_timer_handle[i] = xTimerCreate("LED Timer", pdMS_TO_TICKS(500), pdTRUE, (void *)(i+1), LED_Timer_Call_Back);
+
+  HAL_UART_Receive_IT(&huart2, (uint8_t*)&User_Input, 1);
 
   vTaskStartScheduler();
 
@@ -123,7 +142,7 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
+	  HAL_Delay(1);
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -146,9 +165,10 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_LSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   RCC_OscInitStruct.PLL.PLLM = 8;
@@ -176,6 +196,74 @@ void SystemClock_Config(void)
 }
 
 /**
+  * @brief RTC Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_RTC_Init(void)
+{
+
+  /* USER CODE BEGIN RTC_Init 0 */
+
+  /* USER CODE END RTC_Init 0 */
+
+  /* USER CODE BEGIN RTC_Init 1 */
+
+  /* USER CODE END RTC_Init 1 */
+
+  /** Initialize RTC Only
+  */
+  hrtc.Instance = RTC;
+  hrtc.Init.HourFormat = RTC_HOURFORMAT_12;
+  hrtc.Init.AsynchPrediv = 127;
+  hrtc.Init.SynchPrediv = 255;
+  hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
+  hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
+  hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
+  if (HAL_RTC_Init(&hrtc) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN RTC_Init 2 */
+
+  /* USER CODE END RTC_Init 2 */
+
+}
+
+/**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -188,10 +276,17 @@ static void MX_GPIO_Init(void)
   /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, Green_LED_Pin|Orange_LED_Pin|Red_LED_Pin|Blue_LED_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : Button_Status_Pin */
+  GPIO_InitStruct.Pin = Button_Status_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(Button_Status_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : Green_LED_Pin Orange_LED_Pin Red_LED_Pin Blue_LED_Pin */
   GPIO_InitStruct.Pin = Green_LED_Pin|Orange_LED_Pin|Red_LED_Pin|Blue_LED_Pin;
@@ -200,70 +295,18 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 14, 0);
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
   /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
-void vTask_GreenLED(void * pvParameters)
-{
-	TickType_t GreenLEDPreviousWakeTime;
 
-	GreenLEDPreviousWakeTime = xTaskGetTickCount();
-	while(1)
-	{
-		SEGGER_SYSVIEW_PrintfTarget("Toggling Green LED");
-		HAL_GPIO_TogglePin(GPIOD, Green_LED_Pin);
-//		vTaskDelay(pdMS_TO_TICKS(1000));
-		xTaskDelayUntil(&GreenLEDPreviousWakeTime, pdMS_TO_TICKS(1000));
-//		taskYIELD();
-	}
-
-	vTaskDelete(NULL);
-}
-
-void vTask_OrangeLED(void * pvParameters)
-{
-	TickType_t OrangeLEDPreviousWakeTime;
-
-	OrangeLEDPreviousWakeTime = xTaskGetTickCount();
-
-	while(1)
-	{
-		SEGGER_SYSVIEW_PrintfTarget("Toggling Orange LED");
-		HAL_GPIO_TogglePin(GPIOD, Orange_LED_Pin);
-//		vTaskDelay(pdMS_TO_TICKS(800));
-		xTaskDelayUntil(&OrangeLEDPreviousWakeTime, pdMS_TO_TICKS(800));
-//		taskYIELD();
-	}
-
-	vTaskDelete(NULL);
-}
-
-void vTask_RedLED(void * pvParameters)
-{
-	TickType_t RedLEDPreviousWakeTime;
-
-	RedLEDPreviousWakeTime = xTaskGetTickCount();
-
-	while(1)
-	{
-		SEGGER_SYSVIEW_PrintfTarget("Toggling Red LED");
-		HAL_GPIO_TogglePin(GPIOD, Red_LED_Pin);
-//		vTaskDelay(pdMS_TO_TICKS(400));
-		xTaskDelayUntil(&RedLEDPreviousWakeTime, pdMS_TO_TICKS(400));
-//		taskYIELD();
-	}
-
-	vTaskDelete(NULL);
-}
 /* USER CODE END 4 */
-
-void vApplicationIdleHook( void )
-{
-	HAL_PWR_EnterSLEEPMode(PWR_MAINREGULATOR_ON, PWR_SLEEPENTRY_WFI);
-}
 
 /**
   * @brief  Period elapsed callback in non blocking mode
