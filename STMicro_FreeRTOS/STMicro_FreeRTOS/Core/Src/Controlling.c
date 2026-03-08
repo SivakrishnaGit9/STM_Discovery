@@ -21,7 +21,7 @@ void Command_Extraction(Receive_Command_t *Receice_Command);
 void LED_Effect(int Effect);
 void LED_Effect_none (void);
 
-char *Invalid_Msg = "|********INVALID DATA ENTERED*******|";
+char *Invalid_Msg = "\n\n\r|********INVALID DATA ENTERED*******|\n\r";
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
@@ -52,17 +52,18 @@ void vMain_Menu(void *param)
 {
 	uint32_t Receive_Command_t_add;
 	Receive_Command_t *Receive_Command;
-	char *Main_Menu_Msg = "|--------------------------|\n\r"
-								"|			Main Menu		|\n\r"
-								"|--------------------------|\n\r"
-								"|LED Effect 	-------> 0	|\n\r"
-								"|Date and Time -------> 1	|\n\r"
-								"|Exit			-------> 2	|\n\r"
-								"							\n\r"
-								"Enter your choice 	:";
+	const char *Main_Menu_Msg =
+			"\r\n|----------------------------------|"
+		    "\r\n|            Main Menu             |"
+		    "\r\n|----------------------------------|"
+		    "\r\n| LED Effect          --------> 0  |"
+		    "\r\n| Date and Time       --------> 1  |"
+		    "\r\n| Exit                --------> 2  |"
+		    "\r\n|----------------------------------|"
+		    "\r\n\r\nEnter your choice : ";
 	while(1)
 	{
-		xQueueSend(send_queue,Main_Menu_Msg,portMAX_DELAY);
+		xQueueSend(send_queue,&Main_Menu_Msg,portMAX_DELAY);
 
 		xTaskNotifyWait(0,0,&Receive_Command_t_add,portMAX_DELAY);
 
@@ -174,16 +175,17 @@ void vLED_Menu(void *param)
 {
 	uint32_t Receive_Command_t_add;
 	Receive_Command_t *Receive_Command;
-	const char* LED_Menu_Msg = "\n\r|--------------------------|\n\r"
-								"|			LED Menu		|\n\r"
-								"|--------------------------|\n\r"
-								"|LED Effect 	----> e1	|\n\r"
-								"|LED Effect 	----> e2	|\n\r"
-								"|LED Effect 	----> e3	|\n\r"
-								"|LED Effect 	----> e4	|\n\r"
-								"|LED Effect 	----> none	|\n\r"
-								"							\n\r"
-								"Enter your choice 	:";
+	const char* LED_Menu_Msg =
+			"\r\n|--------------------------|"
+		    "\r\n|        LED Menu          |"
+		    "\r\n|--------------------------|"
+		    "\r\n| LED Effect   ----> e1    |"
+		    "\r\n| LED Effect   ----> e2    |"
+		    "\r\n| LED Effect   ----> e3    |"
+		    "\r\n| LED Effect   ----> e4    |"
+		    "\r\n| LED Effect   ----> none  |"
+		    "\r\n"
+		    "\r\nEnter your choice : ";
 	while(1)
 	{
 		xTaskNotifyWait(0,0,NULL,portMAX_DELAY);
@@ -260,7 +262,7 @@ void LED_Effect(int Effect)
 
 void LED_e1(void)
 {
-	uint8_t Set=0;
+	static uint8_t Set=0;
 
 	if(Set == 1)
 	{
@@ -284,7 +286,7 @@ void LED_e1(void)
 
 void LED_e2(void)
 {
-	uint8_t Set=1;
+	static uint8_t Set=1;
 
 	if(Set == 1)
 	{
@@ -308,7 +310,7 @@ void LED_e2(void)
 
 void LED_e3(void)
 {
-	uint8_t Set_bit_Forward, i=0;
+	static uint8_t Set_bit_Forward, i=0;
 
 	Set_bit_Forward = (0x01<<i);
 
@@ -325,7 +327,7 @@ void LED_e3(void)
 
 void LED_e4(void)
 {
-	uint8_t Set_bit_Reverse, i=0;
+	static uint8_t Set_bit_Reverse, i=0;
 
 	Set_bit_Reverse = (0x08 >> i);
 

@@ -122,10 +122,10 @@ int main(void)
 //  Task_status = xTaskCreate(vRTC_Menu,"RTC Menu Task",200,NULL,2,&rtc_menu_handle);
 //  configASSERT(Task_status == pdPASS);
 
-  send_queue = xQueueCreate(20, sizeof(uint8_t));
+  send_queue = xQueueCreate(20, sizeof(char*));
   configASSERT(send_queue != NULL);
 
-  receive_queue = xQueueCreate(10, sizeof(size_t));
+  receive_queue = xQueueCreate(10, sizeof(uint8_t));
   configASSERT(receive_queue != NULL);
 
   for(i=0; i<4; i++)
